@@ -1,0 +1,10 @@
+{
+  "name": "Daymark — Your life, in view",
+  "short_name": "Daymark",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f5f4ef",
+  "theme_color": "#f5f4ef",
+  "description": "A private, local-first personal life dashboard.",
+  "icons": []
+}

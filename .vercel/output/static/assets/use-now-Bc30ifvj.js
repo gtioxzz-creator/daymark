@@ -1,0 +1,1 @@
+import{i as e,n as t}from"./jsx-runtime-Cltr0gcK.js";var n=e(t(),1);function r(e=1e3){let[t,r]=(0,n.useState)(()=>new Date),[i,a]=(0,n.useState)(!1);return(0,n.useEffect)(()=>{r(new Date),a(!0);let t=window.setInterval(()=>r(new Date),e);return()=>window.clearInterval(t)},[e]),{now:t,ready:i}}export{r as t};

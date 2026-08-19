@@ -1,0 +1,4 @@
+const sidebarToggle=document.querySelector('#sidebarToggle');
+function syncSidebar(){const compact=document.body.classList.contains('sidebar-collapsed');if(sidebarToggle){sidebarToggle.textContent=compact?'›':'‹';sidebarToggle.title=compact?'Expand navigation':'Compact navigation';sidebarToggle.setAttribute('aria-label',sidebarToggle.title)}document.querySelectorAll('.nav-item[data-view]').forEach(item=>{const label=item.textContent.replace(/\d+/g,'').trim();item.title=compact?label:''})}
+if(sidebarToggle){sidebarToggle.onclick=event=>{event.stopPropagation();document.body.classList.toggle('sidebar-collapsed');localStorage.setItem('daymark-sidebar',document.body.classList.contains('sidebar-collapsed')?'1':'0');syncSidebar()};syncSidebar()}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});

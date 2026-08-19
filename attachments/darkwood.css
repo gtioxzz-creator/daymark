@@ -1,0 +1,19 @@
+/* Daymark's darkwood finish: walnut, parchment, and quiet olive light. */
+body:not(.light-mode){--ink:#f3eee4;--muted:#a79b8d;--paper:#1a1715;--card:#25201c;--line:#3a312a;--sage:#394438;--lav:#3a3545;--peach:#4a3931;--blue:#304246;background:var(--paper);color:var(--ink)}
+body:not(.light-mode) .sidebar{background:#151311;border-color:var(--line)}
+body:not(.light-mode) .workspace-pill,body:not(.light-mode) .nav-item:hover,body:not(.light-mode) .nav-item.active{background:#29231f;color:var(--ink)}
+body:not(.light-mode) .workspace-pill{color:#c8beb0}
+body:not(.light-mode) .nav-item,body:not(.light-mode) .icon-btn,body:not(.light-mode) .text-btn,body:not(.light-mode) .mini-more{color:#a79b8d}
+body:not(.light-mode) .nav-item.active span:first-child,body:not(.light-mode) .nav-item:hover span:first-child{color:#d4e962}
+body:not(.light-mode) .offline-card,body:not(.light-mode) .topbar{border-color:var(--line)}
+body:not(.light-mode) .card{background:var(--card);border-color:#3a312a;box-shadow:0 15px 32px #00000022}
+body:not(.light-mode) .breadcrumbs,body:not(.light-mode) .section-kicker,body:not(.light-mode) .eyebrow,body:not(.light-mode) .muted-label,body:not(.light-mode) .note-date,body:not(.light-mode) .schedule-time,body:not(.light-mode) .schedule-meta,body:not(.light-mode) .habit-row small,body:not(.light-mode) .week-summary p,body:not(.light-mode) .note-foot,body:not(.light-mode) .debt-foot{color:#9e9385}
+body:not(.light-mode) .sun-orb{background:#798632;box-shadow:0 12px 36px #737f3138}body:not(.light-mode) .orb-glow{background:#b4bf54}body:not(.light-mode) .sun-orb small{color:#e5ed9c}
+body:not(.light-mode) .focus-strip{background:#322d25;box-shadow:0 14px 30px #0004}
+body:not(.light-mode) .schedule-item,body:not(.light-mode) .habit-row,body:not(.light-mode) .note-foot,body:not(.light-mode) .debt-foot,body:not(.light-mode) .full-row,body:not(.light-mode) .debt-row,body:not(.light-mode) .board-day{border-color:var(--line)}
+body:not(.light-mode) .schedule-item.done .schedule-name{color:#82786d}body:not(.light-mode) .schedule-check{background:#2c2722;border-color:#55493d}body:not(.light-mode) .habit-check{border-color:#615445}
+body:not(.light-mode) .habit-check.done,body:not(.light-mode) .schedule-item.done .schedule-check{background:#aebe42;border-color:#aebe42;color:#1a1715}
+body:not(.light-mode) .ring:after{background:var(--card)}body:not(.light-mode) .debt-bar{background:#3b342d}body:not(.light-mode) .note-card textarea{color:var(--ink)}body:not(.light-mode) .note-card textarea::placeholder{color:#81766a}
+body:not(.light-mode) .add-line{color:#afa496}body:not(.light-mode) .primary-btn{background:#d9ee61;color:#24241b}body:not(.light-mode) .full-row .tag{background:#332d26;color:#b9ab9a}
+body:not(.light-mode) .board-event{background:#394438}body:not(.light-mode) .board-event:nth-child(2n){background:#3a3545}
+body:not(.light-mode) .modal{background:#28221d}body:not(.light-mode) .modal input,body:not(.light-mode) .modal textarea,body:not(.light-mode) .modal select{background:#1f1b18;color:var(--ink);border-color:#4b3f34}body:not(.light-mode) .modal-close{color:#b4a99b}

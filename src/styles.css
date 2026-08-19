@@ -1,0 +1,266 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+  --color-paper: #0b0a08;
+  --color-card: #14110d;
+  --color-raised: #1d1913;
+  --color-ink: #efe6d4;
+  --color-mist: #8a8173;
+  --color-faint: #6a6256;
+  --color-rule: #2c261e;
+  --color-mark: #8a9460;
+  --color-mark-ink: #14140c;
+  --color-danger: #b56a56;
+  --color-good: #7d8a58;
+  --color-sun: #c4a574;
+  --color-moss: #8a9460;
+  --color-bark: #3a3126;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --text-kicker: 0.625rem;
+  --text-kicker--line-height: 1.4;
+  --text-kicker--letter-spacing: 0.16em;
+  --text-display: 4.25rem;
+  --text-display--line-height: 0.92;
+  --text-display--letter-spacing: -0.045em;
+  --text-title: 2.5rem;
+  --text-title--line-height: 1;
+  --text-title--letter-spacing: -0.035em;
+
+  --shadow-border: 0 0 0 1px rgb(239 230 212 / 0.08), inset 0 1px 0 rgb(239 230 212 / 0.06);
+  --shadow-lift: 0 22px 44px -28px rgb(0 0 0 / 0.55);
+  --shadow-inset: inset 0 1px 0 rgb(239 230 212 / 0.05);
+
+  --grid-template-columns-14: repeat(14, minmax(0, 1fr));
+}
+
+html[data-theme="parchment"] {
+  --color-paper: #efe8d6;
+  --color-card: #f7f1e3;
+  --color-raised: #fffaf0;
+  --color-ink: #1c1812;
+  --color-mist: #7a7264;
+  --color-faint: #9a9284;
+  --color-rule: #ddd4c2;
+  --color-mark: #5c6840;
+  --color-mark-ink: #f6f1e4;
+  --color-danger: #9a4e3d;
+  --color-good: #5c6840;
+  --color-sun: #a8844a;
+  --color-moss: #5c6840;
+  --color-bark: #c9bea8;
+  --shadow-border: 0 0 0 1px rgb(28 24 18 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.7);
+  --shadow-lift: 0 18px 40px -24px rgb(40 32 18 / 0.18);
+  --shadow-inset: inset 0 1px 0 rgb(255 255 255 / 0.7);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-rule);
+  }
+
+  html {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+    font-weight: 500;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-mark) 38%, transparent);
+    color: var(--color-ink);
+  }
+
+  input,
+  textarea,
+  select {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@layer utilities {
+  .kicker {
+    font-family: var(--font-mono);
+    font-size: var(--text-kicker);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-mist);
+  }
+
+  .hairline {
+    box-shadow: var(--shadow-border);
+  }
+
+  .surface,
+  .glass,
+  .panel {
+    background: var(--color-card);
+    box-shadow: var(--shadow-border), var(--shadow-inset);
+  }
+
+  .panel-sun {
+    background: color-mix(in oklab, var(--color-sun) 7%, var(--color-card));
+    box-shadow: var(--shadow-border), var(--shadow-inset);
+  }
+
+  .panel-moss {
+    background: color-mix(in oklab, var(--color-mark) 8%, var(--color-card));
+    box-shadow: var(--shadow-border), var(--shadow-inset);
+  }
+
+  .tile-mint,
+  .tile-amber,
+  .tile-violet,
+  .tile-night {
+    background: var(--color-card);
+    color: var(--color-ink);
+    box-shadow: var(--shadow-border), var(--shadow-inset);
+  }
+
+  .live-dot {
+    animation: breathe 3.6s ease-in-out infinite;
+  }
+
+  .cal-chip {
+    background: color-mix(in oklab, var(--color-mark) 18%, var(--color-raised));
+    color: var(--color-ink);
+  }
+  .cal-chip-work {
+    background: color-mix(in oklab, var(--color-sun) 16%, var(--color-raised));
+  }
+  .cal-chip-school {
+    background: color-mix(in oklab, var(--color-ink) 8%, var(--color-raised));
+  }
+  .cal-chip-warm {
+    background: color-mix(in oklab, var(--color-danger) 16%, var(--color-raised));
+  }
+}
+
+@layer components {
+  .forest {
+    position: relative;
+    isolation: isolate;
+    background: var(--color-paper);
+  }
+
+  .forest-layer {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+  }
+
+  .forest-canopy {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1100px 520px at 16% -20%, rgb(196 165 116 / 0.07), transparent 56%),
+      radial-gradient(800px 420px at 90% -12%, rgb(138 148 96 / 0.045), transparent 52%),
+      radial-gradient(80% 60% at 50% 120%, rgb(0 0 0 / 0.28), transparent 62%);
+  }
+
+  .forest-rays {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      118deg,
+      transparent 0%,
+      rgb(196 165 116 / 0.03) 28%,
+      transparent 46%,
+      transparent 58%,
+      rgb(196 165 116 / 0.02) 72%,
+      transparent 88%
+    );
+    animation: ray-drift 64s ease-in-out infinite alternate;
+  }
+
+  .mote {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    border-radius: 999px;
+    background: rgb(239 230 212 / 0.38);
+    box-shadow: 0 0 6px rgb(196 165 116 / 0.35);
+    animation: mote-rise linear infinite;
+  }
+}
+
+@keyframes ray-drift {
+  from {
+    transform: translate3d(0, 0, 0) rotate(0.2deg);
+  }
+  to {
+    transform: translate3d(3%, 1.5%, 0) rotate(-0.6deg);
+  }
+}
+
+@keyframes mote-rise {
+  0% {
+    transform: translate3d(0, 20px, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate3d(18px, -110vh, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+    box-shadow: 0 0 0 0 rgb(138 148 96 / 0);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 10px 1px rgb(138 148 96 / 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .forest-rays,
+  .mote,
+  .live-dot {
+    animation: none !important;
+  }
+}

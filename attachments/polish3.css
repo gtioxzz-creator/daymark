@@ -1,0 +1,49 @@
+/* Premium finish: richer depth, tighter type rhythm, quieter motion. */
+.card{box-shadow:0 1px 2px #00000008,0 12px 32px -8px #00000014;transition:box-shadow .25s ease,transform .25s ease}
+.note-tile:hover,.habit-big:hover{box-shadow:0 1px 2px #00000010,0 22px 46px -12px #0000002a}
+.primary-btn{box-shadow:0 1px 0 #ffffff14 inset,0 8px 20px -6px #00000030;letter-spacing:-.01em;transition:transform .15s ease,box-shadow .15s ease,filter .15s ease}
+.primary-btn:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.primary-btn:active{transform:translateY(0);filter:brightness(.97)}
+.secondary-btn{transition:transform .15s ease,border-color .15s ease,background .15s ease}
+.secondary-btn:hover{transform:translateY(-1px);border-color:#8a7c68}
+.secondary-btn:active{transform:translateY(0)}
+.balance-number{letter-spacing:-.045em;background:linear-gradient(180deg,currentColor,currentColor 60%,#00000000);-webkit-background-clip:text}
+.time-card>strong{text-shadow:0 2px 18px #d9ee6122}
+.hero-row h1,.page-title h1{text-wrap:balance}
+.icon-btn#appearanceBtn{width:38px;height:38px;border:1px solid var(--line);border-radius:11px;display:grid;place-items:center;font-size:16px;background:var(--card);box-shadow:0 4px 12px #00000010;transition:transform .15s ease,background .15s ease}
+.icon-btn#appearanceBtn:hover{transform:translateY(-1px)}
+.task-check,.habit-check,.schedule-check{transition:transform .15s ease,background .15s ease,border-color .15s ease}
+.task-check:active,.habit-check:active{transform:scale(.9)}
+.calendar-event{will-change:transform}
+.debt-row .debt-amount{font-variant-numeric:tabular-nums}
+.transaction-amount{font-variant-numeric:tabular-nums}
+.finance-stat strong{font-variant-numeric:tabular-nums}
+.modal{box-shadow:0 1px 2px #00000012,0 40px 90px -20px #00000045}
+.modal select,body:not(.light-mode) .modal select{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;background-repeat:no-repeat;background-position:right 14px center;background-size:11px 7px;padding-right:36px}
+.modal select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'><path d='M1 1l4.5 4.5L10 1' stroke='%2385887f' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>")}
+body:not(.light-mode) .modal select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='11' height='7' viewBox='0 0 11 7'><path d='M1 1l4.5 4.5L10 1' stroke='%23a79b8d' stroke-width='1.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>")}
+.modal select:focus{outline:none;border-color:#aebe42}
+.modal select option{background:var(--card);color:var(--ink)}
+.settled-link{display:block;margin-top:14px;padding-top:14px;border-top:1px solid var(--line);width:100%;text-align:left;font-size:11px;color:#9cac43}
+.settled-link:hover{color:#bcd354}
+.profile-menu{box-shadow:0 4px 14px #00000018}
+.brand-mark{filter:drop-shadow(0 2px 6px #b2c73d44)}
+::selection{background:#d9ee6155}
+body:not(.light-mode) .balance-number{background:linear-gradient(180deg,#f3eee4,#c8beb0);-webkit-background-clip:text;color:transparent}
+body:not(.light-mode) .money-total strong{background:linear-gradient(180deg,#f3eee4,#c8beb0);-webkit-background-clip:text;color:transparent}
+@media(prefers-reduced-motion:reduce){.card,.primary-btn,.secondary-btn,.icon-btn#appearanceBtn{transition:none}}
+.planner-time-rail{padding-top:0}
+.planner-time-rail>span{height:48px}
+.planner-time-rail>span:first-child{height:64px;border-top:0}
+.calendar-slot{height:48px}
+body.light-mode .time-card{background:linear-gradient(145deg,#fbfaf7,#f0efe9);border-color:var(--line)}
+body.light-mode .time-card-top{color:#8c8e86}
+body.light-mode .time-card>strong{color:var(--ink);text-shadow:none}
+body.light-mode .time-meta{color:#9b9d94}
+body.light-mode .day-progress{background:#e5e4dc}
+body.light-mode .verse-block{background:linear-gradient(100deg,#eef0e2,transparent);border-left-color:#a9bd42}
+body.light-mode .verse-block p{color:#4a4c44}
+body.light-mode .verse-block .faith-prompt{color:#8d8f85}
+body.light-mode .ask-btn{background:var(--card);color:var(--ink);border-color:var(--line)}
+body.light-mode .icon-btn#appearanceBtn{background:var(--card);color:var(--ink)}
+body.light-mode .profile-menu{background:var(--ink);color:#fff}
