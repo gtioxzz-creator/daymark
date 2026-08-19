@@ -82,18 +82,16 @@ export function AskMarkdown({ text, className }: { text: string; className?: str
       {blocks.map((block, i) => {
         if (block.type === "h1") {
           return (
-            <h2 key={i} className="font-display text-3xl leading-tight tracking-tight text-ink">
-              {block.text}
+            <h2 key={i} className="font-display text-3xl leading-[0.95] tracking-tight md:text-4xl">
+              {block.text.replace(/\.$/, "")}
+              <span className="text-mist">.</span>
             </h2>
           );
         }
         if (block.type === "h2") {
           const label = block.text.replace(/^[⚡📋👀]\s*/, "");
-          const mark =
-            /now/i.test(label) ? "⚡ " : /ranked/i.test(label) ? "📋 " : /watch/i.test(label) ? "👀 " : "";
           return (
-            <h3 key={i} className="pt-3 font-display text-xl text-ink">
-              {mark}
+            <h3 key={i} className="kicker pt-4 text-mark">
               {label}
             </h3>
           );

@@ -1,14 +1,16 @@
 import { ChevronDown, Square } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { DictateButton } from "@/components/dictate";
 import { askDaymark, type AskTrace, type DayContext } from "@/lib/ask-ai";
 import { AskMarkdown } from "@/lib/ask-md";
 import { dayFromAsk, foldAsk } from "@/lib/ask-facts";
 import { parseCommand, type AskCommand } from "@/lib/command";
-import { expandEvents } from "@/lib/recur";
+import { useClock } from "@/lib/clock";
+import { LIFE } from "@/lib/life";
+import { eventsOn, expandEvents } from "@/lib/recur";
 import { useDaymark } from "@/lib/store";
-import { addDays, dateOnly, formatDate, formatTime, localISO } from "@/lib/time";
+import { addDays, dateOnly, daysBetween, formatDate, formatTime, localISO } from "@/lib/time";
 import { ensureLoops, ensureWiki } from "@/lib/wiki";
 import { cn } from "@/lib/utils";
 
@@ -60,8 +62,13 @@ function snapshot(now = new Date(), applied = ""): DayContext {
   };
 }
 
-function Blaze({ live }: { live?: boolean }) {
-  return <span className={cn("blaze", live && "blaze-live")} aria-hidden />;
+function hourWord(now: Date) {
+  const h = now.getHours();
+  if (h < 5) return "Still up";
+  if (h < 12) return "Morning";
+  if (h < 17) return "Afternoon";
+  if (h < 21) return "Evening";
+  return "Night";
 }
 
 function ThinkingCard({
@@ -80,45 +87,28 @@ function ThinkingCard({
   if (steps.length === 0 && !live) return null;
   const rows = steps.length
     ? steps
-    : [{ kind: "read" as const, label: "Thinking", title: "Thinking", detail: "Opening the desk." }];
-  const links = rows.filter((row) => row.kind === "connect");
-  const rest = rows.filter((row) => row.kind !== "connect");
+    : [{ kind: "read" as const, label: "Thinking", title: "Reading the board", detail: "" }];
   return (
-    <div className="mb-7">
+    <div className="mb-6">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="mb-3 flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-faint"
+        className="kicker flex items-center gap-2 text-mist hover:text-ink"
       >
-        <Blaze live={live} />
-        {live ? "Marking the trail" : "Trail"}
-        <span className="text-rule">·</span>
-        {rest.length + links.length} {rest.length + links.length === 1 ? "mark" : "marks"}
+        {live ? "Reading" : "How I got here"}
+        <span className="text-rule">/</span>
+        {rows.length}
         <ChevronDown className={cn("size-3 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div className="rounded-xl border border-rule/80 bg-card/80 px-4 py-4">
-          <ol className="space-y-3.5">
-            {rest.map((step, i) => (
-              <li key={`${step.title}-${i}`} className="flex gap-3">
-                <span className="mt-1 shrink-0">
-                  <Blaze live={live && i === rest.length - 1} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm text-ink">{step.title}</p>
-                  {step.detail && <p className="mt-0.5 text-xs leading-5 text-mist">{step.detail}</p>}
-                </div>
-              </li>
-            ))}
-          </ol>
-          {links.map((link, i) => (
-            <div key={`c-${i}`} className="mt-4 flex flex-wrap items-center gap-2 border-t border-rule/70 pt-4">
-              <span className="waypoint">{link.title}</span>
-              <span className="blaze-dash" />
-              <span className="max-w-[42ch] text-xs leading-5 text-mist">{link.detail}</span>
-            </div>
+        <ol className="mt-3">
+          {rows.map((step, i) => (
+            <li key={`${step.title}-${i}`} className="border-t border-rule/80 py-3">
+              <p className="text-sm">{step.title}</p>
+              {step.detail && <p className="mt-1 text-xs leading-5 text-mist">{step.detail}</p>}
+            </li>
           ))}
-        </div>
+        </ol>
       )}
     </div>
   );
@@ -128,7 +118,11 @@ export function AskChat() {
   const remember = useDaymark((s) => s.remember);
   const applyAsk = useDaymark((s) => s.applyAsk);
   const name = useDaymark((s) => s.settings.name) || "Javier";
+  const place = useDaymark((s) => s.settings.place) || LIFE.home;
+  const balance = useDaymark((s) => s.accountBalance);
+  const events = useDaymark((s) => s.events);
   const loops = useDaymark((s) => ensureLoops(s.openLoops));
+  const now = useClock();
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState<AskTrace[]>([]);
@@ -138,6 +132,14 @@ export function AskChat() {
   const abortRef = useRef(false);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const today = localISO(now);
+  const dayEvents = eventsOn(events, today);
+  const clock = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const next = dayEvents.find((event) => event.endTime > clock) ?? dayEvents[0] ?? null;
+  const joyDays = Math.max(0, daysBetween(today, LIFE.anniversary));
+  const rentDays = Math.max(0, daysBetween(today, LIFE.rentDue));
+  const greeting = useMemo(() => `${hourWord(now)}, ${name}`, [now, name]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -155,9 +157,9 @@ export function AskChat() {
     setQuery("");
     setBusy(true);
     abortRef.current = false;
-    setLive([{ kind: "read", title: "Thinking", label: "Thinking", detail: "Opening the desk." }]);
-    const now = new Date();
-    useDaymark.getState().ensureSchedule(now);
+    setLive([{ kind: "read", title: "Reading the board", label: "Thinking", detail: "" }]);
+    const stamp = new Date();
+    useDaymark.getState().ensureSchedule(stamp);
 
     const user: Bubble = {
       id: `u-${Date.now()}`,
@@ -169,7 +171,7 @@ export function AskChat() {
     setBubbles((prev) => [...prev, user]);
 
     let appliedNote = "";
-    const command = parseCommand(foldAsk(message), now);
+    const command = parseCommand(foldAsk(message), stamp);
     if (
       command.type === "add-task" ||
       command.type === "add-event" ||
@@ -194,7 +196,7 @@ export function AskChat() {
       const result = await askDaymark({
         data: {
           message,
-          context: snapshot(now, appliedNote),
+          context: snapshot(stamp, appliedNote),
           thread,
           previousResponseId: responseId || undefined,
         },
@@ -206,17 +208,17 @@ export function AskChat() {
         for (const action of result.actions) {
           if (action.type === "search") continue;
           if (appliedNote && action.type === command.type) continue;
-          const named = dayFromAsk(message, now);
-          const next =
+          const named = dayFromAsk(message, stamp);
+          const nextAction =
             action.type === "add-event"
-              ? { ...action, date: named || dateOnly(action.date) || localISO(now) }
+              ? { ...action, date: named || dateOnly(action.date) || localISO(stamp) }
               : action.type === "add-task"
-                ? { ...action, due: named || action.due || localISO(now) }
+                ? { ...action, due: named || action.due || localISO(stamp) }
                 : action;
-          const wrote = applyAsk(next);
+          const wrote = applyAsk(nextAction);
           if (wrote.ok) {
             toast(wrote.message);
-            const back = inverse(next);
+            const back = inverse(nextAction);
             if (back) setUndo(back);
           }
         }
@@ -229,13 +231,11 @@ export function AskChat() {
             first: result.first,
             reply: result.reply,
             trace: result.trace ?? [],
-            at: now.toLocaleString("en-US", {
+            at: stamp.toLocaleString("en-US", {
               hour: "numeric",
               minute: "2-digit",
               month: "long",
               day: "numeric",
-              year: "numeric",
-              timeZoneName: "short",
             }),
           },
         ]);
@@ -272,113 +272,148 @@ export function AskChat() {
   }
 
   return (
-    <div className="ask-room mx-auto flex min-h-[calc(100dvh-8rem)] w-full max-w-[680px] flex-col pt-8">
-      <header className="mb-14 text-center">
-        <div className="mb-3 flex items-center justify-center gap-2">
-          <span className="blaze" />
-          <p className="text-[11px] uppercase tracking-[0.22em] text-faint">Daymark</p>
-          <span className="blaze" />
+    <div className="pt-5 md:pt-8">
+      <section className="panel grid gap-6 rounded-xl px-5 py-5 md:px-8 md:py-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-16">
+        <div className="min-w-0">
+          <p className="kicker">{greeting}</p>
+          <h1 className="mt-2 font-display text-5xl leading-[0.92] tracking-tight md:text-display">
+            Ask
+            <span className="text-mist">.</span>
+          </h1>
+          <p className="mt-3 text-base text-mist">
+            {next
+              ? `Next on the day is ${formatTime(next.time)} · ${next.title}.`
+              : "Nothing on the board yet. Keep it simple."}
+          </p>
+          <blockquote className="mt-5 border-l border-mark/70 pl-5">
+            <p className="font-display text-lg leading-snug text-ink/90 italic md:text-xl">
+              One first move. Then the list.
+            </p>
+            <cite className="kicker mt-2 block not-italic">For {name}</cite>
+          </blockquote>
         </div>
-        <h1 className="font-display text-[2.6rem] leading-none tracking-tight md:text-5xl">The trail</h1>
-      </header>
 
-      <div className="flex flex-1 flex-col gap-10 pb-10">
-        {bubbles.length === 0 && (
-          <div className="space-y-6">
-            {loops.length > 0 && (
-              <div className="rounded-xl border border-rule/80 px-5 py-4">
-                <p className="kicker text-mark">Still open</p>
-                <ul className="mt-3 space-y-2">
-                  {loops.map((loop) => (
-                    <li key={loop.id} className="flex gap-3 text-sm leading-6 text-mist">
-                      <span className="mt-1.5 shrink-0">
-                        <span className="blaze" />
-                      </span>
-                      {loop.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <p className="text-center text-sm text-mist">What’s on your plate, {name}.</p>
+        <div className="flex flex-col justify-between rounded-lg bg-raised px-6 py-5 shadow-[var(--shadow-inset)]">
+          <div className="flex items-center justify-between">
+            <span className="kicker">Local time</span>
+            <span className="kicker text-mark">{place}</span>
           </div>
-        )}
-        {bubbles.map((row) =>
-          row.role === "user" ? (
-            <div key={row.id} className="ml-auto max-w-[80%] rounded-2xl bg-raised px-5 py-3 text-sm leading-relaxed">
-              {row.first}
+          <p className="mt-5 font-display text-5xl leading-none tracking-tight tabular-nums md:text-6xl">
+            {formatTime(clock)}
+          </p>
+          <div className="mt-5 space-y-3 border-t border-rule pt-4">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="kicker">Joy</p>
+                <p className="mt-1 font-display text-lg">{joyDays === 0 ? "Today" : `${joyDays} days`}</p>
+              </div>
+              <div className="text-right">
+                <p className="kicker">Rent</p>
+                <p className="mt-1 font-display text-lg">
+                  {rentDays}d · ${LIFE.rentTarget}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="kicker">Cash</p>
+                <p className="mt-1 font-display text-lg">${Math.round(balance)}</p>
+              </div>
             </div>
-          ) : (
-            <article key={row.id}>
-              <ThinkingCard steps={row.trace} collapsed />
-              {row.at && <p className="mb-3 text-xs text-faint">{row.at}</p>}
-              <AskMarkdown text={row.reply || row.first} />
-            </article>
-          ),
-        )}
-        {busy && <ThinkingCard steps={live} live />}
-        <div ref={endRef} />
-      </div>
+          </div>
+        </div>
+      </section>
 
-      {undo && (
-        <button
-          type="button"
-          onClick={() => {
-            const done = applyAsk(undo);
-            if (done.ok) toast("Undone.");
-            setUndo(null);
-          }}
-          className="mb-3 self-start rounded-full border border-rule px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-mist hover:text-ink"
-        >
-          Undo last change
-        </button>
-      )}
+      <section className="panel mt-6 rounded-xl px-5 py-6 md:px-8 md:py-8">
+        <div className="mx-auto flex max-w-[640px] flex-col gap-8">
+          {bubbles.length === 0 && (
+            <div>
+              <p className="kicker">Still open</p>
+              {loops.length === 0 ? (
+                <p className="mt-4 text-sm text-mist">Talk whenever you’re ready.</p>
+              ) : (
+                loops.slice(0, 3).map((loop) => (
+                  <div key={loop.id} className="border-t border-rule/80 py-4">
+                    <p className="text-sm">{loop.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
 
-      <div className="sticky bottom-20 z-20 bg-gradient-to-t from-paper via-paper to-transparent pt-6 md:bottom-6">
-        <div className="flex items-end gap-2 rounded-2xl border border-rule bg-raised px-3 py-2">
-          <textarea
-            ref={inputRef}
-            value={query}
-            rows={1}
-            onChange={(event) => setQuery(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" && !event.shiftKey) {
-                event.preventDefault();
-                void send();
-              }
-            }}
-            placeholder="What would you like to do?"
-            className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-2 py-3 text-sm leading-relaxed outline-none placeholder:text-mist"
-          />
-          <DictateButton onTranscript={(text) => void send(text.trim())} className="mb-2 size-8 shrink-0" />
-          {busy ? (
+          {bubbles.map((row) =>
+            row.role === "user" ? (
+              <div key={row.id} className="ml-auto max-w-[85%] text-right">
+                <p className="kicker text-mist">You</p>
+                <p className="mt-2 font-display text-xl leading-snug">{row.first}</p>
+              </div>
+            ) : (
+              <article key={row.id} className="border-t border-rule pt-6">
+                <ThinkingCard steps={row.trace} collapsed />
+                {row.at && <p className="kicker mb-3 text-faint">{row.at}</p>}
+                <AskMarkdown text={row.reply || row.first} />
+              </article>
+            ),
+          )}
+          {busy && <ThinkingCard steps={live} live />}
+          <div ref={endRef} />
+
+          {undo && (
             <button
               type="button"
               onClick={() => {
-                abortRef.current = true;
-                setBusy(false);
-                setLive([]);
+                const done = applyAsk(undo);
+                if (done.ok) toast("Undone.");
+                setUndo(null);
               }}
-              className="mb-2 grid size-8 place-items-center rounded-full text-mist hover:text-ink"
-              aria-label="Stop"
+              className="kicker self-start text-mist hover:text-ink"
             >
-              <Square className="size-3.5 fill-current" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={!query.trim()}
-              onClick={() => void send()}
-              className={cn(
-                "mb-2 h-8 rounded-full px-4 text-[11px] uppercase tracking-[0.16em]",
-                query.trim() ? "bg-ink text-paper" : "text-faint",
-              )}
-            >
-              Send
+              Undo last change
             </button>
           )}
+
+          <div className="sticky bottom-20 z-20 md:bottom-6">
+            <div className="flex items-end gap-2 rounded-lg bg-raised px-3 py-2 shadow-[var(--shadow-inset)]">
+              <textarea
+                ref={inputRef}
+                value={query}
+                rows={1}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    void send();
+                  }
+                }}
+                placeholder="Ask Daymark"
+                className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-2 py-2.5 text-sm leading-relaxed outline-none placeholder:text-mist"
+              />
+              <DictateButton onTranscript={(text) => void send(text.trim())} className="mb-1.5 size-8 shrink-0" />
+              {busy ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    abortRef.current = true;
+                    setBusy(false);
+                    setLive([]);
+                  }}
+                  className="mb-1.5 grid size-8 place-items-center text-mist hover:text-ink"
+                  aria-label="Stop"
+                >
+                  <Square className="size-3.5 fill-current" />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!query.trim()}
+                  onClick={() => void send()}
+                  className={cn("kicker mb-1.5 h-8 px-3", query.trim() ? "text-mark" : "text-faint")}
+                >
+                  Send
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

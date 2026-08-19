@@ -142,11 +142,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DaymarkLockup compact />
             </Link>
             <div className="min-w-0 flex-1 md:contents">
-              {pathname.startsWith("/ask") ? (
-                <p className="kicker text-center text-mark">In conversation</p>
-              ) : (
-                <AskBar />
-              )}
+              <AskBar />
             </div>
             <div className="flex justify-end">
               <AccountMenu />
