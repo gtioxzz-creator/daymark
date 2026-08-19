@@ -26,14 +26,75 @@ export type MoneyPlan = {
   items: { name: string; note: string; left: number }[];
 };
 
-function stamp(now: Date) {
-  return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+function cash(n: number) {
+  const value = Math.round(n);
+  return value < 0 ? `−$${Math.abs(value)}` : `$${value}`;
+}
+
+function pick(lines: string[], key: string) {
+  let hash = 0;
+  for (let i = 0; i < key.length; i += 1) hash += key.charCodeAt(i) * (i + 3);
+  return lines[hash % lines.length]!;
+}
+
+function moneyVoice(balance: number, today: string) {
+  const shown = cash(balance);
+  if (balance < 0) {
+    return pick(
+      [
+        `${shown}. You’re under. Next shift is the climb — not a treat.`,
+        `${shown} below zero. Hold still. Rent is still the hill.`,
+        `${shown} on the book. Stop the leak until Bulla pays.`,
+      ],
+      today,
+    );
+  }
+  if (balance < 50) {
+    return pick(
+      [
+        `${shown} on hand. Thin. Leave it until the shift lands.`,
+        `${shown}. That’s not room to spend.`,
+        `${shown} on hand. Gas and food only.`,
+      ],
+      today,
+    );
+  }
+  if (balance < 400) {
+    return pick(
+      [
+        `${shown} on hand. Toward the $400, not out the door.`,
+        `${shown}. Enough to breathe. Not enough to get loose.`,
+        `${shown} on hand. Rent first if anything moves.`,
+      ],
+      today,
+    );
+  }
+  return pick(
+    [
+      `${shown} on hand. Set the rent aside while it’s here.`,
+      `${shown}. Strong day. Don’t let it wander.`,
+      `${shown} on hand. The hill is still September 1.`,
+    ],
+    today,
+  );
 }
 
 function leaveBy(time: string): string {
   const mins = minutesFromMidnight(time) - LIFE.driveMinutes;
   if (mins < 0) return "now";
   return formatTime(timeFromMinutes(mins));
+}
+
+function anniversaryMove(until: number): DayMove {
+  return {
+    kicker: until === 0 ? "Today" : `${until} day${until === 1 ? "" : "s"}`,
+    title: "Anniversary with Joy.",
+    detail:
+      until === 0
+        ? "The evening is already on the week. Protect it."
+        : "Plan the night. The money, the place, a note to her.",
+    kind: "mark",
+  };
 }
 
 export function decideDay(input: {
@@ -49,11 +110,8 @@ export function decideDay(input: {
   const today = localISO(input.now);
   const isToday = input.viewDate === today;
   const hour = input.now.getHours();
-  const nowStamp = stamp(input.now);
+  const nowMins = hour * 60 + input.now.getMinutes();
   const dayEvents = eventsOn(input.events, input.viewDate);
-  const upcoming = isToday
-    ? dayEvents.find((event) => event.endTime > nowStamp)
-    : dayEvents[0];
   const faith = input.habits.find((habit) => /jesus|prayer|faith/i.test(habit.name));
   const faithOpen = Boolean(faith && !faith.history.includes(input.viewDate));
   const overdue = input.tasks.filter(
@@ -62,19 +120,86 @@ export function decideDay(input: {
   const dueToday = input.tasks.filter(
     (task) => !task.done && task.due === input.viewDate,
   );
-  const gabriel = input.debts.find((debt) => /gabriel/i.test(debt.name) && debt.paid < debt.amount);
+  const gabriel = input.debts.find(
+    (debt) => /gabriel/i.test(debt.name) && debt.paid < debt.amount,
+  );
   const untilMark = daysBetween(today, LIFE.anniversary);
+  const nextTask = (isToday ? [...overdue, ...dueToday] : dueToday)[0];
 
-  if (isToday && hour >= 21 && !input.closedDays.includes(today)) {
+  if (!isToday) {
+    const first = dayEvents[0];
+    if (first) {
+      return {
+        kicker: formatTime(first.time),
+        title: first.title,
+        detail: first.location || formatDate(input.viewDate),
+        kind: "event",
+        eventId: first.id,
+      };
+    }
+    if (nextTask) {
+      return {
+        kicker: "On this day",
+        title: nextTask.name,
+        detail: nextTask.meta || nextTask.category,
+        kind: "task",
+        taskId: nextTask.id,
+      };
+    }
+    if (input.viewDate === LIFE.anniversary) return anniversaryMove(0);
     return {
-      kicker: "Close the day",
-      title: "Put the day down.",
-      detail: "One line in the journal. Tomorrow’s first block. Then rest.",
-      kind: "close",
+      kicker: formatDate(input.viewDate, "EEEE"),
+      title: "Nothing is listed.",
+      detail: "The day is open.",
+      kind: "clear",
     };
   }
 
-  if (isToday && faithOpen && hour < 14) {
+  const happening = dayEvents.find((event) => {
+    const start = minutesFromMidnight(event.time);
+    const end = minutesFromMidnight(event.endTime);
+    return nowMins >= start && nowMins < end;
+  });
+  if (happening) {
+    return {
+      kicker: "Now",
+      title: happening.title,
+      detail: `Until ${formatTime(happening.endTime)}${happening.location ? ` · ${happening.location}` : ""}`,
+      kind: "event",
+      eventId: happening.id,
+    };
+  }
+
+  const upcoming = dayEvents.find(
+    (event) => minutesFromMidnight(event.time) > nowMins,
+  );
+
+  if (upcoming) {
+    const start = minutesFromMidnight(upcoming.time);
+    const workAway =
+      /tampa/i.test(upcoming.location) || upcoming.category === "Work";
+    const minutesToStart = start - nowMins;
+    if (workAway && minutesToStart <= LIFE.driveMinutes + 20) {
+      return {
+        kicker: "Leave by",
+        title: leaveBy(upcoming.time),
+        detail: `${upcoming.title} · ${formatTime(upcoming.time)} · ${upcoming.location || LIFE.workCity}`,
+        kind: "leave",
+        eventId: upcoming.id,
+      };
+    }
+    return {
+      kicker: formatTime(upcoming.time),
+      title: upcoming.title,
+      detail: [upcoming.location, `until ${formatTime(upcoming.endTime)}`]
+        .filter(Boolean)
+        .join(" · "),
+      kind: "event",
+      eventId: upcoming.id,
+    };
+  }
+
+  if (faithOpen && hour >= 5 && hour < 10) {
     return {
       kicker: "First",
       title: faith!.name,
@@ -84,56 +209,6 @@ export function decideDay(input: {
     };
   }
 
-  if (isToday && untilMark >= 0 && untilMark <= 10) {
-    return {
-      kicker: untilMark === 0 ? "Today" : `${untilMark} day${untilMark === 1 ? "" : "s"}`,
-      title: untilMark === 0 ? "Anniversary with Joy." : "Anniversary with Joy.",
-      detail:
-        untilMark === 0
-          ? "The evening is already on the week. Protect it."
-          : "Plan the night. The money, the place, a note to her.",
-      kind: "mark",
-    };
-  }
-
-  if (isToday && upcoming) {
-    const workAway =
-      /tampa/i.test(upcoming.location) || upcoming.category === "Work";
-    const startSoon =
-      minutesFromMidnight(upcoming.time) - minutesFromMidnight(nowStamp) <= 180;
-    if (workAway && startSoon) {
-      return {
-        kicker: "Leave by",
-        title: leaveBy(upcoming.time),
-        detail: `${upcoming.title} · ${formatTime(upcoming.time)} · ${upcoming.location || LIFE.workCity}`,
-        kind: "leave",
-        eventId: upcoming.id,
-      };
-    }
-    if (upcoming.time > nowStamp || startSoon) {
-      return {
-        kicker: formatTime(upcoming.time),
-        title: upcoming.title,
-        detail: [upcoming.location, upcoming.endTime ? `until ${formatTime(upcoming.endTime)}` : ""]
-          .filter(Boolean)
-          .join(" · "),
-        kind: "event",
-        eventId: upcoming.id,
-      };
-    }
-  }
-
-  if (isToday && gabriel && input.balance < gabriel.amount - gabriel.paid) {
-    return {
-      kicker: "Money",
-      title: `Gabriel still has ${Math.round(gabriel.amount - gabriel.paid)} on the book.`,
-      detail: `You have $${input.balance.toFixed(0)}. Don’t spend before the shift.`,
-      kind: "money",
-      debtId: gabriel.id,
-    };
-  }
-
-  const nextTask = (isToday ? [...overdue, ...dueToday] : dueToday)[0];
   if (nextTask) {
     const late = Boolean(nextTask.due && nextTask.due < today);
     return {
@@ -145,23 +220,34 @@ export function decideDay(input: {
     };
   }
 
-  if (!isToday) {
-    if (upcoming) {
+  if (gabriel && hour < 21) {
+    const leftover = Math.round(gabriel.amount - gabriel.paid);
+    if (leftover > 0 && input.balance < leftover) {
       return {
-        kicker: formatTime(upcoming.time),
-        title: upcoming.title,
-        detail: upcoming.location || formatDate(input.viewDate),
-        kind: "event",
-        eventId: upcoming.id,
+        kicker: "Money",
+        title: `Gabriel still has ${leftover} on the book.`,
+        detail:
+          input.balance < leftover
+            ? `${cash(input.balance)} in the account. Wait for the shift, then close it.`
+            : `You can close it today. ${cash(input.balance)} is enough.`,
+        kind: "money",
+        debtId: gabriel.id,
       };
     }
+  }
+
+  if (untilMark === 0) return anniversaryMove(0);
+
+  if (hour >= 21 && !input.closedDays.includes(today)) {
     return {
-      kicker: formatDate(input.viewDate, "EEEE"),
-      title: "Nothing is listed.",
-      detail: "The day is open.",
-      kind: "clear",
+      kicker: "Close the day",
+      title: "Put the day down.",
+      detail: "One line in the journal. Tomorrow’s first block. Then rest.",
+      kind: "close",
     };
   }
+
+  if (untilMark > 0 && untilMark <= 7) return anniversaryMove(untilMark);
 
   return {
     kicker: "The board",
@@ -177,7 +263,12 @@ export function moneyPlan(debts: Debt[], balance: number, today = localISO()): M
     const left = Math.max(0, debt.amount - debt.paid);
     let note = debt.rate;
     if (/gabriel/i.test(debt.name)) {
-      note = left <= balance ? "You can close this today." : "Next paycheck. Then close it.";
+      note =
+        left <= 0
+          ? "Cleared."
+          : left <= balance
+            ? "You can close this today."
+            : "Next paycheck. Then close it.";
     } else if (/joy/i.test(debt.name)) {
       note = "Hold. Do not add to it.";
     } else if (/credit/i.test(debt.name)) {
@@ -196,9 +287,5 @@ export function moneyPlan(debts: Debt[], balance: number, today = localISO()): M
       left: LIFE.rentTarget,
     });
   }
-  const line =
-    balance < 50
-      ? `$${balance.toFixed(0)} on hand. Protect it until the shift pays.`
-      : `$${balance.toFixed(0)} on hand. One useful money move.`;
-  return { line, items };
+  return { line: moneyVoice(balance, today), items };
 }

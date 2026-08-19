@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAskRouteImport } from './routes/_app/ask'
 import { Route as AppHabitsRouteImport } from './routes/_app/habits'
 import { Route as AppJournalRouteImport } from './routes/_app/journal'
 import { Route as AppMoneyRouteImport } from './routes/_app/money'
@@ -31,6 +32,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAskRoute = AppAskRouteImport.update({
+  id: '/ask',
+  path: '/ask',
   getParentRoute: () => AppRoute,
 } as any)
 const AppHabitsRoute = AppHabitsRouteImport.update({
@@ -67,6 +73,7 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/ask': typeof AppAskRoute
   '/habits': typeof AppHabitsRoute
   '/journal': typeof AppJournalRoute
   '/money': typeof AppMoneyRoute
@@ -76,6 +83,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/ask': typeof AppAskRoute
   '/habits': typeof AppHabitsRoute
   '/journal': typeof AppJournalRoute
   '/money': typeof AppMoneyRoute
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/ask': typeof AppAskRoute
   '/_app/habits': typeof AppHabitsRoute
   '/_app/journal': typeof AppJournalRoute
   '/_app/money': typeof AppMoneyRoute
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/ask'
     | '/habits'
     | '/journal'
     | '/money'
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/ask'
     | '/habits'
     | '/journal'
     | '/money'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/ask'
     | '/_app/habits'
     | '/_app/journal'
     | '/_app/money'
@@ -157,6 +169,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/ask': {
+      id: '/_app/ask'
+      path: '/ask'
+      fullPath: '/ask'
+      preLoaderRoute: typeof AppAskRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/habits': {
@@ -205,6 +224,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAskRoute: typeof AppAskRoute
   AppHabitsRoute: typeof AppHabitsRoute
   AppJournalRoute: typeof AppJournalRoute
   AppMoneyRoute: typeof AppMoneyRoute
@@ -214,6 +234,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAskRoute: AppAskRoute,
   AppHabitsRoute: AppHabitsRoute,
   AppJournalRoute: AppJournalRoute,
   AppMoneyRoute: AppMoneyRoute,

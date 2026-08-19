@@ -90,6 +90,12 @@ export type Settings = {
   place: string;
 };
 
+export type Memory = {
+  id: number;
+  text: string;
+  at: string;
+};
+
 export type DaymarkState = {
   profileVersion: number;
   tasks: Task[];
@@ -103,6 +109,9 @@ export type DaymarkState = {
   settings: Settings;
   quickNote: string;
   closedDays: string[];
+  memories: Memory[];
+  wiki: import("./wiki").WikiPage[];
+  openLoops: import("./wiki").OpenLoop[];
 };
 
 export type ModalKind =

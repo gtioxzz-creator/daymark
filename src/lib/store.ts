@@ -13,10 +13,12 @@ import type {
   Task,
   TaskCategory,
 } from "./types";
-import { emptyState, PROFILE, seed } from "./seed";
+import { emptyState, ensureCoreEvents, PROFILE, seed } from "./seed";
+import { STARTER_MEMORIES } from "./life";
+import { ensureLoops, ensureWiki, mergeFact } from "./wiki";
 import { inferRecur } from "./recur";
 import { commandLabel, matchName, parseCommand, type AskCommand } from "./command";
-import { localISO, minutesFromMidnight, timeFromMinutes } from "./time";
+import { dateOnly, localISO, minutesFromMidnight, timeFromMinutes } from "./time";
 
 type DaymarkStore = DaymarkState & {
   hydrated: boolean;
@@ -50,8 +52,10 @@ type DaymarkStore = DaymarkState & {
   patchSettings: (patch: Partial<Settings>) => void;
   importEvents: (events: Omit<CalendarEvent, "id">[]) => number;
   closeDay: (date?: string) => void;
-  applyAsk: (input: string, now?: Date) => { ok: boolean; message: string };
+  remember: (text: string) => void;
+  applyAsk: (input: string | AskCommand, now?: Date) => { ok: boolean; message: string };
   hydrateFromCloud: (data: Partial<DaymarkState>) => void;
+  ensureSchedule: (now?: Date) => void;
 };
 
 function nextId(): number {
@@ -70,7 +74,12 @@ function inferTaskDue(task: { due?: string | null; meta?: string }): string | nu
 function runAsk(get: () => DaymarkStore, command: AskCommand): { ok: boolean; message: string } {
   const state = get();
   if (command.type === "add-task") {
-    state.addTask({ name: command.name, category: "Personal", due: command.due });
+    state.addTask({
+      name: command.name,
+      category: /trash|home|joy/i.test(command.name) ? "Home" : "Personal",
+      due: command.due,
+      meta: command.meta,
+    });
     return { ok: true, message: commandLabel(command) };
   }
   if (command.type === "add-event") {
@@ -97,6 +106,31 @@ function runAsk(get: () => DaymarkStore, command: AskCommand): { ok: boolean; me
     state.moveEvent(event.id, command.date ?? event.date, time, endTime);
     return { ok: true, message: `Moved ${event.title}.` };
   }
+  if (command.type === "delete-task") {
+    const task = matchName(state.tasks, command.query);
+    if (!task) return { ok: false, message: "No task like that." };
+    state.deleteTask(task.id);
+    return { ok: true, message: `Removed · ${task.name}` };
+  }
+  if (command.type === "delete-event") {
+    const event = matchName(state.events, command.query);
+    if (!event) return { ok: false, message: "No event like that." };
+    state.deleteEvent(event.id);
+    return { ok: true, message: `Removed · ${event.title}` };
+  }
+  if (command.type === "add-note") {
+    state.addNote({ title: command.title, text: command.text });
+    return { ok: true, message: `Saved · ${command.title}` };
+  }
+  if (command.type === "patch-settings") {
+    const patch: Partial<Settings> = {};
+    if (command.name != null) patch.name = command.name;
+    if (command.place != null) patch.place = command.place;
+    if (command.sound != null) patch.sound = command.sound;
+    if (command.theme) patch.theme = command.theme;
+    state.patchSettings(patch);
+    return { ok: true, message: "Settings updated." };
+  }
   if (command.type === "complete-task") {
     const task = matchName(
       state.tasks.filter((item) => !item.done),
@@ -105,6 +139,17 @@ function runAsk(get: () => DaymarkStore, command: AskCommand): { ok: boolean; me
     if (!task) return { ok: false, message: "No open task like that." };
     state.toggleTask(task.id);
     return { ok: true, message: `Done · ${task.name}` };
+  }
+  if (command.type === "reopen-task") {
+    const task =
+      matchName(state.completedTasks, command.query) ??
+      matchName(
+        state.tasks.filter((item) => item.done),
+        command.query,
+      );
+    if (!task) return { ok: false, message: `Nothing done named ${command.query}.` };
+    state.toggleTask(task.id);
+    return { ok: true, message: `Back open · ${task.name}` };
   }
   if (command.type === "toggle-habit") {
     const habit = matchName(state.habits, command.query);
@@ -124,9 +169,17 @@ function runAsk(get: () => DaymarkStore, command: AskCommand): { ok: boolean; me
   }
   if (command.type === "pay-debt") {
     const debt = matchName(state.debts, command.query);
-    if (!debt) return { ok: false, message: "No debt like that." };
-    state.payDebt(debt.id, command.amount);
-    return { ok: true, message: `Paid ${debt.name}.` };
+    if (debt) {
+      const leftover = Math.max(0, debt.amount - debt.paid);
+      const amount = command.amount && command.amount > 0 ? command.amount : leftover;
+      if (amount > 0) state.payDebt(debt.id, amount);
+    }
+    const related = state.tasks.filter(
+      (task) => !task.done && matchName([task], command.query),
+    );
+    for (const task of related) state.toggleTask(task.id);
+    if (!debt && related.length === 0) return { ok: false, message: "Nothing like that to clear." };
+    return { ok: true, message: `Cleared · ${command.query}` };
   }
   return { ok: false, message: "" };
 }
@@ -217,6 +270,9 @@ function normalizeLegacy(raw: unknown): DaymarkState {
             ? localStorage.getItem("daymark-quick-note")
             : "") || "",
     closedDays: Array.isArray(incoming.closedDays) ? incoming.closedDays : [],
+    memories: Array.isArray(incoming.memories) ? incoming.memories : [],
+    wiki: ensureWiki(incoming.wiki),
+    openLoops: ensureLoops(incoming.openLoops),
   };
 }
 
@@ -234,6 +290,9 @@ export function snapshotState(state: DaymarkState): DaymarkState {
     settings: state.settings,
     quickNote: state.quickNote,
     closedDays: state.closedDays ?? [],
+    memories: state.memories ?? [],
+    wiki: ensureWiki(state.wiki),
+    openLoops: ensureLoops(state.openLoops),
   };
 }
 
@@ -296,16 +355,15 @@ export const useDaymark = create<DaymarkStore>()(
         });
       },
       addEvent: (input) => {
-        set({
-          events: [
-            ...get().events,
-            {
-              ...input,
-              id: nextId(),
-              recur: input.recur ?? inferRecur(input.title),
-            },
-          ],
-        });
+        const event: CalendarEvent = {
+          ...input,
+          id: nextId(),
+          date: dateOnly(input.date),
+          time: input.time || "12:00",
+          endTime: input.endTime || input.time || "13:00",
+          recur: input.recur ?? inferRecur(input.title),
+        };
+        set({ events: [...get().events, event] });
       },
       updateEvent: (id, patch) => {
         set({
@@ -439,12 +497,27 @@ export const useDaymark = create<DaymarkStore>()(
         set({ closedDays: [...days, date] });
         markSound();
       },
-      applyAsk: (input, now = new Date()) => runAsk(get, parseCommand(input, now)),
+      remember: (text) => {
+        const clean = text.trim();
+        if (!clean) return;
+        const memories = get().memories.filter(
+          (item) => item.text.toLowerCase() !== clean.toLowerCase(),
+        );
+        set({
+          memories: [{ id: nextId(), text: clean, at: new Date().toISOString() }, ...memories].slice(
+            0,
+            48,
+          ),
+          wiki: mergeFact(ensureWiki(get().wiki), clean),
+        });
+      },
+      applyAsk: (input, now = new Date()) =>
+        runAsk(get, typeof input === "string" ? parseCommand(input, now) : input),
       hydrateFromCloud: (data) => {
         set({
           tasks: data.tasks ?? get().tasks,
           completedTasks: data.completedTasks ?? get().completedTasks,
-          events: data.events ?? get().events,
+          events: ensureCoreEvents(data.events ?? get().events),
           notes: data.notes ?? get().notes,
           habits: data.habits ?? get().habits,
           debts: data.debts ?? get().debts,
@@ -453,7 +526,31 @@ export const useDaymark = create<DaymarkStore>()(
           settings: data.settings ?? get().settings,
           quickNote: data.quickNote ?? get().quickNote,
           closedDays: data.closedDays ?? get().closedDays,
+          memories: data.memories ?? get().memories,
+          wiki: ensureWiki(data.wiki ?? get().wiki),
+          openLoops: ensureLoops(data.openLoops ?? get().openLoops),
         });
+      },
+      ensureSchedule: (now = new Date()) => {
+        const events = ensureCoreEvents(get().events, now).map((event) => ({
+          ...event,
+          date: dateOnly(event.date),
+          time: event.time || "12:00",
+          endTime: event.endTime || event.time || "13:00",
+        }));
+        const dirty =
+          events.length !== get().events.length ||
+          events.some((event, i) => event.date !== get().events[i]?.date);
+        const wiki = ensureWiki(get().wiki);
+        const loops = ensureLoops(get().openLoops);
+        if (dirty || wiki !== get().wiki || loops !== get().openLoops) {
+          set({
+            events,
+            wiki,
+            openLoops: loops,
+            profileVersion: Math.max(get().profileVersion, 8),
+          });
+        }
       },
       importEvents: (events) => {
         const stamped = events.map((event, i) => ({
@@ -494,8 +591,10 @@ export const useDaymark = create<DaymarkStore>()(
           patchSettings: _ps,
           importEvents: _ie,
           closeDay: _cd,
+          remember: _rm,
           applyAsk: _aa,
           hydrateFromCloud: _hc,
+          ensureSchedule: _es,
           ...rest
         } = state;
         return rest;
@@ -530,6 +629,12 @@ export const useDaymark = create<DaymarkStore>()(
             theme: state.settings.theme === "parchment" ? "parchment" as const : "darkwood" as const,
           };
           useDaymark.setState({
+            profileVersion: Math.max(state.profileVersion, 7),
+            events: ensureCoreEvents(
+              state.profileVersion < 8 || state.events.length === 0
+                ? seed.events
+                : state.events,
+            ),
             tasks: state.tasks.map((task) => ({
               ...task,
               due: task.due ?? inferTaskDue(task),
@@ -538,11 +643,17 @@ export const useDaymark = create<DaymarkStore>()(
               ...task,
               due: task.due ?? inferTaskDue(task),
             })),
-            events: state.events.map((event) => ({
-              ...event,
-              recur: inferRecur(event.title, event.recur),
-            })),
             closedDays: state.closedDays ?? [],
+            memories:
+              state.memories?.length
+                ? state.memories
+                : hasLife
+                  ? STARTER_MEMORIES.map((text, i) => ({
+                      id: 9000 + i,
+                      text,
+                      at: new Date().toISOString(),
+                    }))
+                  : [],
             settings,
           });
         }

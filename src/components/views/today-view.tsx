@@ -2,7 +2,7 @@ import { ArrowUpRight, Check, ChevronLeft, ChevronRight, Plus } from "lucide-rea
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { verseFor } from "@/lib/seed";
+import { PROFILE, verseFor } from "@/lib/seed";
 import { decideDay } from "@/lib/decide";
 import { eventsOn } from "@/lib/recur";
 import { debtTotal, tasksForDay, useDaymark } from "@/lib/store";
@@ -40,7 +40,6 @@ export function TodayView() {
   const toggleHabit = useDaymark((s) => s.toggleHabit);
   const openModal = useDaymark((s) => s.openModal);
   const closedDays = useDaymark((s) => s.closedDays);
-  const closeDay = useDaymark((s) => s.closeDay);
   const profileName = useDaymark((s) => s.settings.name);
   const place = useDaymark((s) => s.settings.place);
 
@@ -89,32 +88,19 @@ export function TodayView() {
   );
 
   const kicker = isToday
-    ? profileName
-      ? `${greeting(now.getHours())}, ${profileName}`
-      : greeting(now.getHours())
+    ? `${greeting(now.getHours())}, ${profileName || PROFILE.first}`
     : relativeDay(viewDate, today);
 
   return (
     <div className="pt-5 md:pt-8">
-      <a
-        href="/Daymark-complete.zip"
-        download="Daymark-complete.zip"
-        className="mb-4 flex items-center justify-between gap-4 rounded-xl bg-ink px-5 py-4 text-paper"
-      >
-        <span>
-          <span className="kicker text-mark">Download</span>
-          <span className="mt-1 block font-display text-xl">Daymark-complete.zip</span>
-        </span>
-        <span className="shrink-0 text-sm text-mark">Click here →</span>
-      </a>
-      <section className="panel grid gap-8 rounded-xl px-5 py-6 md:px-8 md:py-8 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.95fr)] lg:gap-16">
+      <section className="panel grid gap-6 rounded-xl px-5 py-5 md:px-8 md:py-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.95fr)] lg:gap-16">
         <div className="min-w-0">
           <p className="kicker">{kicker}</p>
-          <h1 className="mt-3 font-display text-5xl leading-[0.92] tracking-tight md:text-display">
+          <h1 className="mt-2 font-display text-5xl leading-[0.92] tracking-tight md:text-display">
             {view.toLocaleDateString("en-US", { weekday: "long" })}
             <span className="text-mist">.</span>
           </h1>
-          <p className="mt-4 text-base text-mist">
+          <p className="mt-3 text-base text-mist">
             {view.toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
@@ -131,35 +117,21 @@ export function TodayView() {
               Return to today
             </button>
           )}
-          <blockquote className="mt-8 border-l border-mark/70 pl-5">
+          <blockquote className="mt-5 border-l border-mark/70 pl-5">
             <p className="font-display text-lg leading-snug text-ink/90 italic md:text-xl">
               {verse}
             </p>
-            <cite className="kicker mt-3 block not-italic">{ref}</cite>
+            <cite className="kicker mt-2 block not-italic">{ref}</cite>
           </blockquote>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (move.kind === "faith" && move.habitId) toggleHabit(move.habitId, viewDate);
-              else if (move.kind === "task" && move.taskId) toggleTask(move.taskId);
-              else if (move.kind === "event" || move.kind === "leave") {
-                openModal({ type: "event", id: move.eventId });
-              } else if (move.kind === "money") openModal({ type: "payment", debtId: move.debtId });
-              else if (move.kind === "close") {
-                openModal({ type: "note" });
-                closeDay(today);
-              } else if (move.kind === "mark") openModal({ type: "event", date: "2026-08-26" });
-            }}
-            className="mt-8 max-w-sm rounded-lg bg-raised px-4 py-4 text-left shadow-[var(--shadow-inset)]"
-          >
+          <div className="mx-auto mt-5 w-full max-w-sm rounded-lg bg-raised px-4 py-4 text-center shadow-[var(--shadow-inset)]">
             <p className="kicker text-mark">{move.kicker}</p>
             <p className="mt-2 font-display text-xl leading-snug">{move.title}</p>
             <p className="mt-2 text-xs leading-relaxed text-mist">{move.detail}</p>
-          </button>
+          </div>
         </div>
 
-        <div className="flex min-h-[260px] flex-col justify-between rounded-lg bg-raised px-6 py-6 shadow-[var(--shadow-inset)]">
+        <div className="flex flex-col justify-between rounded-lg bg-raised px-6 py-5 shadow-[var(--shadow-inset)]">
           <div className="flex items-center justify-between">
             <span className="kicker">{isToday ? "Local time" : "This hour"}</span>
             <span className="flex items-center gap-2 kicker text-mark">
@@ -167,10 +139,10 @@ export function TodayView() {
               {zone}
             </span>
           </div>
-          <p className="mt-8 font-display text-6xl leading-none tracking-tight tabular-nums md:text-7xl">
+          <p className="mt-5 font-display text-5xl leading-none tracking-tight tabular-nums md:text-6xl">
             {clock}
           </p>
-          <div className="mt-8">
+          <div className="mt-5">
             <div className="flex justify-between font-mono text-[10px] text-mist">
               <span>{place || "Local"}</span>
               <span>
@@ -185,7 +157,7 @@ export function TodayView() {
                 style={{ width: `${isToday ? progress : 100}%` }}
               />
             </div>
-            <div className="mt-6 flex items-end justify-between gap-4">
+            <div className="mt-4 flex items-end justify-between gap-4">
               <div className="min-w-0">
                 <p className="kicker">
                   {upcoming

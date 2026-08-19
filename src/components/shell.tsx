@@ -4,11 +4,14 @@ import {
   CalendarDays,
   CircleDollarSign,
   ListChecks,
+  PanelLeft,
+  PanelLeftClose,
   Settings,
+  Sparkles,
   Sun,
   SunMedium,
 } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AccountMenu } from "./account-menu";
 import { AskBar } from "./ask-bar";
 import { DaymarkLockup } from "./mark";
@@ -18,6 +21,7 @@ import { useClock } from "@/lib/clock";
 import { cn } from "@/lib/utils";
 
 const NAV = [
+  { to: "/ask", label: "Ask", icon: Sparkles, match: (p: string) => p.startsWith("/ask") },
   { to: "/", label: "Today", icon: SunMedium, match: (p: string) => p === "/" },
   { to: "/week", label: "Week", icon: CalendarDays, match: (p: string) => p.startsWith("/week") },
   { to: "/tasks", label: "Tasks", icon: ListChecks, match: (p: string) => p.startsWith("/tasks") },
@@ -33,6 +37,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const taskCount = useDaymark((s) => s.tasks.length);
   const place = useDaymark((s) => s.settings.place);
   const now = useClock();
+  const [compact, setCompact] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("daymark-rail") === "compact";
+  });
   const headerDay = now.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -40,18 +48,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
   const zone = tzAbbrev(now);
 
+  const ensureSchedule = useDaymark((s) => s.ensureSchedule);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  useEffect(() => {
+    ensureSchedule();
+  }, [ensureSchedule]);
+
   return (
     <div className="min-h-dvh bg-paper text-ink">
       <div className="flex min-h-dvh">
-        <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-rule px-5 py-7 md:flex">
-          <Link to="/" className="mb-12 block px-2">
-            <DaymarkLockup />
+        <aside
+          className={cn(
+            "sticky top-0 hidden h-dvh shrink-0 flex-col border-r border-rule py-7 transition-[width,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] md:flex",
+            compact ? "w-[72px] items-center px-2" : "w-[248px] px-5",
+          )}
+        >
+          <Link to="/" className={cn("mb-12 block", compact ? "px-0" : "px-2")}>
+            <DaymarkLockup compact={compact} />
           </Link>
-          <nav className="flex flex-1 flex-col gap-1">
+          <nav className={cn("flex flex-1 flex-col gap-1", compact && "w-full items-center")}>
             {NAV.map((item) => {
               const Icon = item.icon;
               const active = item.match(pathname);
@@ -59,14 +78,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={item.to}
                   to={item.to}
+                  title={item.label}
                   className={cn(
-                    "flex h-11 items-center gap-3 rounded-md px-3 text-sm text-mist transition-colors hover:bg-raised/80 hover:text-ink",
+                    "flex h-11 items-center rounded-md text-sm text-mist transition-colors hover:bg-raised/80 hover:text-ink",
+                    compact ? "w-11 justify-center px-0" : "gap-3 px-3",
                     active && "bg-raised text-ink",
                   )}
                 >
-                  <Icon className={cn("size-4", active && "text-mark")} />
-                  <span>{item.label}</span>
-                  {item.to === "/tasks" && taskCount > 0 && (
+                  <Icon className={cn("size-4 shrink-0", active && "text-mark")} />
+                  {!compact && <span>{item.label}</span>}
+                  {!compact && item.to === "/tasks" && taskCount > 0 && (
                     <span className="ml-auto font-mono text-[10px] text-mist">
                       {taskCount}
                     </span>
@@ -75,20 +96,41 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="mt-auto border-t border-rule pt-4">
+          <div
+            className={cn(
+              "mt-auto border-t border-rule pt-4",
+              compact ? "flex w-full flex-col items-center gap-1" : "flex items-center gap-1",
+            )}
+          >
             <button
               type="button"
               onClick={() => openModal({ type: "settings" })}
-              className="flex h-11 w-full items-center gap-3 rounded-md px-3 text-sm text-mist transition-colors hover:bg-raised hover:text-ink"
+              title="Settings"
+              className={cn(
+                "flex h-11 items-center rounded-md text-sm text-mist transition-colors hover:bg-raised hover:text-ink",
+                compact ? "w-11 justify-center" : "min-w-0 flex-1 gap-3 px-3",
+              )}
             >
-              <Settings className="size-4" />
-              Settings
+              <Settings className="size-4 shrink-0" />
+              {!compact && "Settings"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !compact;
+                setCompact(next);
+                window.localStorage.setItem("daymark-rail", next ? "compact" : "open");
+              }}
+              title={compact ? "Open the rail" : "Compact the rail"}
+              className="grid size-11 shrink-0 place-items-center rounded-md text-mist transition-colors hover:bg-raised hover:text-ink"
+            >
+              {compact ? <PanelLeft className="size-4" /> : <PanelLeftClose className="size-4" />}
             </button>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-[64px] items-center gap-2 border-b border-rule px-3 md:grid md:h-[72px] md:grid-cols-[1fr_minmax(200px,520px)_1fr] md:gap-3 md:px-8">
+          <header className="relative z-40 flex h-[64px] items-center gap-2 overflow-visible border-b border-rule px-3 md:grid md:h-[72px] md:grid-cols-[1fr_minmax(200px,520px)_1fr] md:gap-3 md:px-8">
             <p className="kicker hidden min-w-0 truncate md:block">
               {place || "Daymark"}
               <span className="mx-3 text-rule">/</span>
@@ -100,7 +142,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <DaymarkLockup compact />
             </Link>
             <div className="min-w-0 flex-1 md:contents">
-              <AskBar />
+              {pathname.startsWith("/ask") ? (
+                <p className="kicker text-center text-mark">In conversation</p>
+              ) : (
+                <AskBar />
+              )}
             </div>
             <div className="flex justify-end">
               <AccountMenu />

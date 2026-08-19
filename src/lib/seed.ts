@@ -1,7 +1,51 @@
-import type { DaymarkState } from "./types";
+import { SEED_LOOPS, SEED_PAGES } from "./wiki";
+import type { CalendarEvent, DaymarkState } from "./types";
+import { expandEvents } from "./recur";
 import { addDays, localISO } from "./time";
 
 const today = localISO();
+
+function onWeekday(want: number, now = new Date()): string {
+  const back = (now.getDay() - want + 7) % 7;
+  return addDays(-back, now);
+}
+
+export function coreWorkEvents(now = new Date()): CalendarEvent[] {
+  const wednesday = onWeekday(3, now);
+  const thursday = onWeekday(4, now);
+  return [
+    {
+      id: 201,
+      title: "Food runner shift at Bulla",
+      date: wednesday,
+      time: "17:30",
+      endTime: "21:00",
+      category: "Work",
+      location: "Tampa",
+      recur: "weekly",
+    },
+    {
+      id: 206,
+      title: "Food runner shift at Bulla",
+      date: thursday,
+      time: "17:30",
+      endTime: "21:00",
+      category: "Work",
+      location: "Tampa",
+      recur: "weekly",
+    },
+    {
+      id: 202,
+      title: "Chemistry study block",
+      date: wednesday,
+      time: "10:00",
+      endTime: "11:30",
+      category: "School",
+      location: "Home",
+      recur: "weekly",
+    },
+  ];
+}
 
 export const verses: [string, string][] = [
   [
@@ -51,7 +95,7 @@ export const PROFILE = {
 };
 
 export const emptyState: DaymarkState = {
-  profileVersion: 6,
+  profileVersion: 7,
   tasks: [],
   completedTasks: [],
   events: [],
@@ -63,10 +107,13 @@ export const emptyState: DaymarkState = {
   settings: { sound: true, theme: "darkwood", name: "", initials: "", place: "" },
   quickNote: "",
   closedDays: [],
+  memories: [],
+  wiki: [],
+  openLoops: [],
 };
 
 export const seed: DaymarkState = {
-  profileVersion: 6,
+  profileVersion: 7,
   tasks: [
     {
       id: 101,
@@ -107,26 +154,7 @@ export const seed: DaymarkState = {
   ],
   completedTasks: [],
   events: [
-    {
-      id: 201,
-      title: "Food runner shift at Bulla",
-      date: today,
-      time: "17:30",
-      endTime: "21:00",
-      category: "Work",
-      location: "Tampa",
-      recur: "weekly",
-    },
-    {
-      id: 202,
-      title: "Chemistry study block",
-      date: today,
-      time: "10:00",
-      endTime: "11:30",
-      category: "School",
-      location: "Home",
-      recur: "weekdays",
-    },
+    ...coreWorkEvents(),
     {
       id: 205,
       title: "Evening with Joy",
@@ -230,4 +258,34 @@ export const seed: DaymarkState = {
   },
   quickNote: "",
   closedDays: [],
+  memories: [],
+  wiki: SEED_PAGES,
+  openLoops: SEED_LOOPS,
 };
+
+export function ensureCoreEvents(
+  events: CalendarEvent[],
+  now = new Date(),
+): CalendarEvent[] {
+  const cores = coreWorkEvents(now);
+  if (events.length === 0) {
+    const extras = seed.events.filter(
+      (event) => !cores.some((core) => core.id === event.id),
+    );
+    return [...cores, ...extras];
+  }
+  const weekFrom = addDays(-now.getDay(), now);
+  const weekTo = addDays(6 - now.getDay(), now);
+  const shown = expandEvents(events, weekFrom, weekTo);
+  const next = [...events];
+  let nextId = Math.max(0, ...next.map((event) => event.id)) + 1;
+  for (const core of cores) {
+    const match = /bulla/i.test(core.title) ? /bulla/i : /chemistry/i;
+    const has = shown.some((event) => event.date === core.date && match.test(event.title));
+    if (!has) {
+      next.push({ ...core, id: nextId });
+      nextId += 1;
+    }
+  }
+  return next;
+}
